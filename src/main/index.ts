@@ -7,7 +7,10 @@ import {
   getTermsFromDatabase,
   getAvailableLanguages,
   insertGlossaryEntry,
+  updateGlossaryEntry,
+  deleteGlossaryEntry,
   InsertGlossaryEntryProps,
+  updateGlossaryEntryProps,
 } from './database';
 
 function createWindow(): void {
@@ -71,6 +74,14 @@ app.whenReady().then(() => {
 
   ipcMain.handle('db:insertGlossaryEntry', async (_, props: InsertGlossaryEntryProps) => {
     return await insertGlossaryEntry(props);
+  });
+
+  ipcMain.handle('db:updateGlossaryEntry', async (_, props: updateGlossaryEntryProps) => {
+    return await updateGlossaryEntry(props);
+  });
+
+  ipcMain.handle('db:deleteGlossaryEntry', async (_, termId: number) => {
+    return await deleteGlossaryEntry(termId);
   });
 
   // IPC test

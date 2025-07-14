@@ -1,6 +1,6 @@
 'use client';
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import {
   DialogHeader,
@@ -12,34 +12,46 @@ import {
 } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { InsertGlossaryEntryProps } from 'src/main/database';
+import { InsertGlossaryEntryProps, updateGlossaryEntryProps } from 'src/main/database';
 
 interface AddTermModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddTerm: (term: InsertGlossaryEntryProps) => void;
+  onAddTerm: (term: InsertGlossaryEntryProps | updateGlossaryEntryProps) => void;
+  termData: updateGlossaryEntryProps | null;
 }
 
-export function AddTermModal({ isOpen, onClose, onAddTerm }: AddTermModalProps) {
+export function AddTermModal({ isOpen, onClose, onAddTerm, termData }: AddTermModalProps) {
+  const [isEdit, setIsEdit] = useState(false);
   const [englishTerm, setEnglishTerm] = useState('');
   const [spanishTranslation, setSpanishTranslation] = useState('');
-  // const [frenchTranslation, setFrenchTranslation] = useState(''); // Optional additional language
+
+  useEffect(() => {
+    if (termData) {
+      setIsEdit(true);
+      setEnglishTerm(termData.primaryTerm || '');
+      setSpanishTranslation(termData.translations?.spanish || '');
+    } else {
+      setIsEdit(false);
+      setEnglishTerm('');
+      setSpanishTranslation('');
+    }
+    console.log(isEdit, termData);
+  }, [termData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (englishTerm.trim() && spanishTranslation.trim()) {
       onAddTerm({
+        termId: isEdit ? termData?.termId || 0 : undefined, // Use existing termId if editing
         primaryTerm: englishTerm.trim(),
         definition: '', // Assuming definition is not required for this modal
         translations: {
           spanish: spanishTranslation.trim(),
-          // french: frenchTranslation.trim() || undefined,
         },
       });
       setEnglishTerm('');
       setSpanishTranslation('');
-      // setFrenchTranslation('');
-      // onClose();
     }
   };
 
@@ -47,7 +59,7 @@ export function AddTermModal({ isOpen, onClose, onAddTerm }: AddTermModalProps) 
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Term</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit' : 'Add New'} Term</DialogTitle>
           <DialogDescription>
             Enter the English term and its translations. Click save when you're done.
           </DialogDescription>
