@@ -17,7 +17,18 @@ export interface Language {
   isPrimary: boolean;
 }
 
-export async function addDefaultData(): Promise<{ success: boolean; message: string }> {
+export interface InsertGlossaryEntryProps {
+  primaryTerm: string;
+  definition: string;
+  translations?: { [languageKey: string]: string };
+}
+
+export interface BaseResponse {
+  success: boolean;
+  message: string;
+}
+
+export async function addDefaultData(): Promise<BaseResponse> {
   try {
     // Check if there's already data in the glossary entries table
     const [entryCount] = await db.select({ count: count() }).from(glossaryEntries);
@@ -172,6 +183,73 @@ export async function getTermsFromDatabase(): Promise<Term[]> {
   } catch (error) {
     console.error('Error fetching terms from database:', error);
     return [];
+  }
+}
+
+export async function insertGlossaryEntry(
+  props: InsertGlossaryEntryProps
+): Promise<BaseResponse & { termId?: number }> {
+  try {
+    const { primaryTerm, definition, translations } = props;
+
+    // Get all available languages
+    const availableLanguages = await db.select().from(languages);
+    const languageMap = new Map(availableLanguages.map((lang) => [lang.name.toLowerCase(), lang]));
+
+    // Insert the main glossary entry
+    const [insertedEntry] = await db
+      .insert(glossaryEntries)
+      .values({
+        term: primaryTerm,
+        definition: definition,
+      })
+      .returning();
+
+    if (!insertedEntry) {
+      return {
+        success: false,
+        message: 'Failed to insert glossary entry.',
+      };
+    }
+
+    // Insert translations if provided
+    let translationCount = 0;
+    if (translations) {
+      for (const [languageKey, translation] of Object.entries(translations)) {
+        const language = languageMap.get(languageKey.toLowerCase());
+
+        if (language && !language.isPrimary && translation.trim()) {
+          try {
+            await db.insert(entryTranslations).values({
+              termId: insertedEntry.id,
+              languageId: language.id,
+              translation: translation.trim(),
+            });
+            translationCount++;
+          } catch (error) {
+            console.error(`Failed to insert translation for ${languageKey}:`, error);
+            // Continue with other translations instead of failing completely
+          }
+        }
+      }
+    }
+
+    const message =
+      translationCount > 0
+        ? `Successfully added term "${primaryTerm}" with ${translationCount} translation(s).`
+        : `Successfully added term "${primaryTerm}" without translations.`;
+
+    return {
+      success: true,
+      message: message,
+      termId: insertedEntry.id,
+    };
+  } catch (error) {
+    console.error('Error inserting glossary entry:', error);
+    return {
+      success: false,
+      message: `Failed to insert glossary entry: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    };
   }
 }
 

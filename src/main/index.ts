@@ -2,7 +2,13 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
-import { addDefaultData, getTermsFromDatabase, getAvailableLanguages } from './database';
+import {
+  addDefaultData,
+  getTermsFromDatabase,
+  getAvailableLanguages,
+  insertGlossaryEntry,
+  InsertGlossaryEntryProps,
+} from './database';
 
 function createWindow(): void {
   // Create the browser window.
@@ -61,6 +67,10 @@ app.whenReady().then(() => {
 
   ipcMain.handle('db:getLanguages', async () => {
     return await getAvailableLanguages();
+  });
+
+  ipcMain.handle('db:insertGlossaryEntry', async (_, props: InsertGlossaryEntryProps) => {
+    return await insertGlossaryEntry(props);
   });
 
   // IPC test

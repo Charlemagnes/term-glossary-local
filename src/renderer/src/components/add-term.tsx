@@ -1,36 +1,47 @@
-"use client"
-import type React from "react"
-import { useState } from "react"
-import  { Button } from "./ui/button"
-import  { DialogHeader, DialogFooter, DialogDescription, DialogTitle, DialogContent, Dialog } from "./ui/dialog"
-import  { Input } from "./ui/input"
-import { Label } from "./ui/label"
+'use client';
+import type React from 'react';
+import { useState } from 'react';
+import { Button } from './ui/button';
+import {
+  DialogHeader,
+  DialogFooter,
+  DialogDescription,
+  DialogTitle,
+  DialogContent,
+  Dialog,
+} from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { InsertGlossaryEntryProps } from 'src/main/database';
 
 interface AddTermModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onAddTerm: (term: { english: string; spanish: string; french?: string }) => void
+  isOpen: boolean;
+  onClose: () => void;
+  onAddTerm: (term: InsertGlossaryEntryProps) => void;
 }
 
 export function AddTermModal({ isOpen, onClose, onAddTerm }: AddTermModalProps) {
-  const [englishTerm, setEnglishTerm] = useState("")
-  const [spanishTranslation, setSpanishTranslation] = useState("")
-  const [frenchTranslation, setFrenchTranslation] = useState("") // Optional additional language
+  const [englishTerm, setEnglishTerm] = useState('');
+  const [spanishTranslation, setSpanishTranslation] = useState('');
+  // const [frenchTranslation, setFrenchTranslation] = useState(''); // Optional additional language
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (englishTerm.trim() && spanishTranslation.trim()) {
       onAddTerm({
-        english: englishTerm.trim(),
-        spanish: spanishTranslation.trim(),
-        french: frenchTranslation.trim() || undefined, // Only add if not empty
-      })
-      setEnglishTerm("")
-      setSpanishTranslation("")
-      setFrenchTranslation("")
-      onClose()
+        primaryTerm: englishTerm.trim(),
+        definition: '', // Assuming definition is not required for this modal
+        translations: {
+          spanish: spanishTranslation.trim(),
+          // french: frenchTranslation.trim() || undefined,
+        },
+      });
+      setEnglishTerm('');
+      setSpanishTranslation('');
+      // setFrenchTranslation('');
+      // onClose();
     }
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -66,7 +77,7 @@ export function AddTermModal({ isOpen, onClose, onAddTerm }: AddTermModalProps) 
               required
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
+          {/* <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="french" className="text-right">
               French (Optional)
             </Label>
@@ -76,12 +87,12 @@ export function AddTermModal({ isOpen, onClose, onAddTerm }: AddTermModalProps) 
               onChange={(e) => setFrenchTranslation(e.target.value)}
               className="col-span-3"
             />
-          </div>
+          </div> */}
           <DialogFooter>
             <Button type="submit">Save Term</Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

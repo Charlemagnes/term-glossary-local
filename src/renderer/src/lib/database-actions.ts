@@ -13,6 +13,12 @@ export interface Language {
   isPrimary: boolean;
 }
 
+export interface InsertGlossaryEntryProps {
+  primaryTerm: string;
+  definition: string;
+  translations?: { [languageKey: string]: string };
+}
+
 /**
  * Add default data to the database
  */
@@ -53,5 +59,20 @@ export async function getAvailableLanguages() {
       { id: 1, name: 'English', key: 'english', isPrimary: true },
       { id: 2, name: 'Spanish', key: 'spanish', isPrimary: false },
     ];
+  }
+}
+
+/**
+ * insert new term and translations into the database
+ */
+export async function insertGlossaryEntry(props: InsertGlossaryEntryProps) {
+  try {
+    return await window.api.insertGlossaryEntry(props);
+  } catch (error) {
+    console.error('Error calling insertGlossaryEntry via IPC:', error);
+    return {
+      success: false,
+      message: 'Failed to communicate with main process',
+    };
   }
 }

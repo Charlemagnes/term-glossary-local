@@ -1,24 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { electronAPI } from '@electron-toolkit/preload';
+import { BaseResponse, InsertGlossaryEntryProps, Language, Term } from 'src/main/database';
 
 // Define the API interface for better TypeScript support
 export interface DatabaseAPI {
-  addDefaultData: () => Promise<{ success: boolean; message: string }>;
+  addDefaultData: () => Promise<BaseResponse>;
   getTerms: () => Promise<Term[]>;
   getLanguages: () => Promise<Language[]>;
-}
-
-// Type definitions (matching the ones in database.ts)
-export interface Term {
-  id: string;
-  [languageKey: string]: string | undefined;
-}
-
-export interface Language {
-  id: number;
-  name: string;
-  key: string;
-  isPrimary: boolean;
+  insertGlossaryEntry: (props: InsertGlossaryEntryProps) => Promise<BaseResponse>;
 }
 
 // Custom APIs for renderer
@@ -26,6 +15,8 @@ const api: DatabaseAPI = {
   addDefaultData: () => ipcRenderer.invoke('db:addDefaultData'),
   getTerms: () => ipcRenderer.invoke('db:getTerms'),
   getLanguages: () => ipcRenderer.invoke('db:getLanguages'),
+  insertGlossaryEntry: (props: InsertGlossaryEntryProps) =>
+    ipcRenderer.invoke('db:insertGlossaryEntry', props),
 };
 
 // Use `contextBridge` APIs to expose Electron APIs to
