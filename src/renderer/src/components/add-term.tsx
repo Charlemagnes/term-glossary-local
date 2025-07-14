@@ -43,9 +43,9 @@ export function AddTermModal({ isOpen, onClose, onAddTerm, termData }: AddTermMo
     e.preventDefault();
     if (englishTerm.trim() && spanishTranslation.trim()) {
       onAddTerm({
-        termId: isEdit ? termData?.termId || 0 : undefined, // Use existing termId if editing
+        termId: isEdit ? termData?.termId || 0 : undefined,
         primaryTerm: englishTerm.trim(),
-        definition: '', // Assuming definition is not required for this modal
+        definition: '',
         translations: {
           spanish: spanishTranslation.trim(),
         },
