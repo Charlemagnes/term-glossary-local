@@ -1,6 +1,7 @@
 # term-glossary-local
 
-An Electron application with React and TypeScript
+An Electron app for storing a glossary of terms and their equivalent translation in different languages.
+Same as my other project, but instead of next, it's electron for local usage.
 
 ## Recommended IDE Setup
 
