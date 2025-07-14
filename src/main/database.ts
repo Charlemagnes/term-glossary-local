@@ -1,9 +1,21 @@
-'use server';
+import { db } from '@server/db/index';
+import { languages, glossaryEntries, entryTranslations } from '@server/db/schema';
+import { count } from 'drizzle-orm';
+import defaultData from '@server/db/default-data.json';
 
-import { db } from '~/server/db';
-import { languages, glossaryEntries, entryTranslations } from '~/server/db/schema';
-import { count, eq } from 'drizzle-orm';
-import defaultData from '~/default-data.json';
+// Type definitions
+export interface Term {
+  id: string;
+  // Index signature to allow any language as a property
+  [languageKey: string]: string | undefined;
+}
+
+export interface Language {
+  id: number;
+  name: string;
+  key: string; // lowercase version for use as object keys
+  isPrimary: boolean;
+}
 
 export async function addDefaultData(): Promise<{ success: boolean; message: string }> {
   try {
@@ -29,53 +41,36 @@ export async function addDefaultData(): Promise<{ success: boolean; message: str
           { name: 'English', isPrimary: true },
           { name: 'Spanish', isPrimary: false },
         ])
-        .returning({ id: languages.id, name: languages.name });
+        .returning();
 
-      englishLang = insertedLanguages.find((lang) => lang.name === 'English');
-      spanishLang = insertedLanguages.find((lang) => lang.name === 'Spanish');
+      englishLang = insertedLanguages[0];
+      spanishLang = insertedLanguages[1];
     } else {
-      // Languages already exist, find them
+      // Get existing languages
       const existingLanguages = await db.select().from(languages);
       englishLang = existingLanguages.find((lang) => lang.name === 'English');
       spanishLang = existingLanguages.find((lang) => lang.name === 'Spanish');
 
-      // If English or Spanish don't exist, create them
       if (!englishLang || !spanishLang) {
-        const languagesToInsert = [];
-        if (!englishLang) languagesToInsert.push({ name: 'English', isPrimary: true });
-        if (!spanishLang) languagesToInsert.push({ name: 'Spanish', isPrimary: false });
-
-        const newLanguages = await db
-          .insert(languages)
-          .values(languagesToInsert)
-          .returning({ id: languages.id, name: languages.name });
-
-        if (!englishLang) englishLang = newLanguages.find((lang) => lang.name === 'English');
-        if (!spanishLang) spanishLang = newLanguages.find((lang) => lang.name === 'Spanish');
+        return {
+          success: false,
+          message: 'Required languages (English/Spanish) not found in database.',
+        };
       }
     }
 
-    if (!englishLang || !spanishLang) {
-      throw new Error('Failed to insert languages');
-    }
-
-    // Insert glossary entries and translations
+    // Insert glossary entries
     let successCount = 0;
-    const batchSize = 50; // Process in batches to avoid overwhelming the database
-
-    for (let i = 0; i < defaultData.length; i += batchSize) {
-      const batch = defaultData.slice(i, i + batchSize);
-
-      for (const item of batch) {
+    for (const item of defaultData) {
+      if (item.english && item.spanish) {
         try {
-          // Insert the glossary entry (using English term as the main term)
           const [insertedEntry] = await db
             .insert(glossaryEntries)
             .values({
               term: item.english,
-              definition: item.english, // Using the term as definition for now
+              definition: `Definition for ${item.english}`,
             })
-            .returning({ id: glossaryEntries.id });
+            .returning();
 
           if (insertedEntry) {
             // no need to insert english as it is the main term
@@ -118,63 +113,66 @@ export async function getTermsFromDatabase(): Promise<Term[]> {
       console.log('No terms found in database, adding default data...');
       const result = await addDefaultData();
       if (!result.success) {
-        console.warn('Failed to add default data:', result.message);
-      } else {
-        console.log('Default data added successfully');
+        console.error('Failed to add default data:', result.message);
+        return [];
       }
     }
 
-    // Get all glossary entries with their translations
-    const results = await db
+    // Get all available languages first
+    const availableLanguages = await db.select().from(languages);
+
+    // Get all terms with their translations
+    const terms = await db
       .select({
-        entryId: glossaryEntries.id,
+        id: glossaryEntries.id,
         term: glossaryEntries.term,
-        languageName: languages.name,
+        definition: glossaryEntries.definition,
+        createdAt: glossaryEntries.createdAt,
+        updatedAt: glossaryEntries.updatedAt,
+      })
+      .from(glossaryEntries);
+
+    // Get all translations
+    const translations = await db
+      .select({
+        termId: entryTranslations.termId,
+        languageId: entryTranslations.languageId,
         translation: entryTranslations.translation,
       })
-      .from(glossaryEntries)
-      .leftJoin(entryTranslations, eq(glossaryEntries.id, entryTranslations.termId))
-      .leftJoin(languages, eq(entryTranslations.languageId, languages.id));
+      .from(entryTranslations);
 
-    // Group translations by entry
-    const termsMap = new Map<number, Term>();
+    // Create a map for quick language lookups
+    const languageMap = new Map(availableLanguages.map((lang) => [lang.id, lang]));
 
-    results.forEach((row) => {
-      if (!termsMap.has(row.entryId)) {
-        termsMap.set(row.entryId, {
-          id: row.entryId.toString(),
-          // Set the main term as English (since that's what we store in glossaryEntries.term)
-          english: row.term,
-        });
+    // Transform the data into the expected format
+    const result: Term[] = terms.map((term) => {
+      const termObj: Term = {
+        id: term.id.toString(),
+      };
+
+      // Add the primary language (English) term
+      const primaryLang = availableLanguages.find((lang) => lang.isPrimary);
+      if (primaryLang) {
+        termObj[primaryLang.name.toLowerCase()] = term.term;
       }
 
-      const term = termsMap.get(row.entryId)!;
-      if (row.languageName && row.translation) {
-        // Store translation with lowercase language name as key
-        term[row.languageName.toLowerCase()] = row.translation;
+      // Add translations for other languages
+      const termTranslations = translations.filter((t) => t.termId === term.id);
+      for (const translation of termTranslations) {
+        const language = languageMap.get(translation.languageId);
+        if (language) {
+          termObj[language.name.toLowerCase()] = translation.translation;
+        }
       }
+
+      return termObj;
     });
 
-    return Array.from(termsMap.values());
+    return result;
   } catch (error) {
     console.error('Error fetching terms from database:', error);
     return [];
   }
-}
-
-// Type definition for Term - flexible interface for dynamic languages
-export interface Term {
-  id: string;
-  // Index signature to allow any language as a property
-  [languageKey: string]: string | undefined;
-}
-
-// Type for language information
-export interface Language {
-  id: number;
-  name: string;
-  key: string; // lowercase version for use as object keys
-  isPrimary: boolean;
 }
 
 export async function getAvailableLanguages(): Promise<Language[]> {

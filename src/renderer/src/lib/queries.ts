@@ -3,7 +3,7 @@ import {
   addDefaultData as addDefaultDataAction,
   getTermsFromDatabase,
   getAvailableLanguages,
-} from './actions';
+} from './database-actions';
 
 export const QUERY_KEYS = {
   terms: ['terms'] as const,

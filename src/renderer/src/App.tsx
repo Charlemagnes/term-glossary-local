@@ -13,7 +13,6 @@ import {
   Table,
 } from './components/ui/table';
 import { Languages, Plus } from 'lucide-react';
-import type { Term } from './lib/actions';
 import { AddTermModal } from './components/add-term';
 import {
   DropdownMenu,
@@ -70,7 +69,7 @@ export default function GlossaryPage() {
     }
     const lowerCaseFilterTerm = filterTerm.toLowerCase();
     return currentTerms.filter((term) => {
-      const valueToSearch = term[filterLanguage as keyof Term];
+      const valueToSearch = term[filterLanguage];
       return (
         typeof valueToSearch === 'string' &&
         valueToSearch.toLowerCase().includes(lowerCaseFilterTerm)
@@ -82,10 +81,9 @@ export default function GlossaryPage() {
     const newId = (
       currentTerms.length > 0 ? Math.max(...currentTerms.map((t) => Number.parseInt(t.id))) + 1 : 1
     ).toString();
-    const newTerm: Term = {
-      id: newId,
-      ...newTermData,
-    };
+    // TODO: Implement adding new terms to database
+    // This functionality needs to be implemented
+    console.log('Adding new term:', { id: newId, ...newTermData });
     // handle this with a db insert
     // setTerms((prevTerms) => [...prevTerms, newTerm]);
   };
@@ -199,9 +197,7 @@ export default function GlossaryPage() {
               filteredTerms.map((term) => (
                 <TableRow key={term.id}>
                   {dynamicLanguages.map((lang) => (
-                    <TableCell key={`${term.id}-${lang.key}`}>
-                      {term[lang.key as keyof Term] || '-'}
-                    </TableCell>
+                    <TableCell key={`${term.id}-${lang.key}`}>{term[lang.key] || '-'}</TableCell>
                   ))}
                 </TableRow>
               ))
