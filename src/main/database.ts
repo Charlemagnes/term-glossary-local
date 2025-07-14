@@ -1,7 +1,7 @@
-import { db } from '@server/db/index';
-import { languages, glossaryEntries, entryTranslations } from '@server/db/schema';
+import { db } from '../server/db/index';
+import { languages, glossaryEntries, entryTranslations } from '../server/db/schema';
 import { count } from 'drizzle-orm';
-import defaultData from '@server/db/default-data.json';
+import defaultData from '../server/db/default-data.json';
 
 // Type definitions
 export interface Term {
